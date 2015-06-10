@@ -22,8 +22,7 @@ def evaluateKNN(trainData, trainTarget, testData, testTarget):
 def random(X,Y):
 	z = zip(X,Y)
 	np.random.shuffle(z)
-	newX = []
-	newY = []
+	newX, newY = [], []
 	for i in z:
 		newX.append(i[0])
 		newY.append(i[1])
@@ -54,12 +53,47 @@ def KFoldValidation_KNN(X,Y):
 		total_error += error
 	total_error = (float(total_error)/len(Y))*100
 	print "total error: %f %%" %total_error
+	return total_error
 
-print "-----Avaliando KNN para IRIS - KFOLD-cross validation (10 folds)"
+def OAOPairList(Y):#getOAOPairList
+	#returns OneAgainstOne pairs list, for a given target list 'Y'
+	classes = np.unique(Y)
+	classes.sort()
+	ret = []
+	for c1 in classes:
+		for c2 in classes:
+			if (c1 < c2):
+				ret.append((c1,c2))
+	return ret
+
+def OAODataSet(X,Y,OAOPair):#getOAODataSet
+	#get a sub-dataset only with instance where the target is one from the given in the OAOPair pair
+	newX, newY = [], []
+	for i in range(len(Y)):
+		if ((Y[i] == OAOPair[1]) | (Y[i] == OAOPair[0])):
+			newX.append(X[i])
+			newY.append(Y[i])
+	return newX, newY
+
+def OAOValidation(X,Y):
+	pairs = OAOPairList(Y)
+	bestError = 100
+	bestPair = []
+	for p in pairs:
+		print "for classes: %d and %d:" %(p[0],p[1])
+		nx, ny = OAODataSet(X,Y,p)
+		error = KFoldValidation_KNN(nx,ny)
+		if (bestError > error):
+			bestError = error
+			bestPair = p
+	print "\nBEST ERROR: %f %% | for class %d vs %d" %(bestError,bestPair[0],bestPair[1])
+	return bestError, bestPair
+
+
+print "-----Avaliando KNN para IRIS - KFOLD-cross validation (10 folds)OAA"
 iris = datasets.load_iris()
 X, y = iris.data, iris.target
 X,y = random(X,y)
 KFoldValidation_KNN(X,y)
-
-
-
+print "-----Avaliando KNN para IRIS - KFOLD-cross validation (10 folds) OAO"
+OAOValidation(X,y)
