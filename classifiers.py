@@ -1,11 +1,13 @@
 import numpy as np
 from sklearn import datasets
 from sklearn.neighbors import KNeighborsClassifier
+from collections import Counter as ctr
 
 def evaluateKNN(trainData, trainTarget, testData, testTarget):
 	kList = [1,3,5,7,10,20,30]#1,3,5,7,10,20,30
-	error = 100.0
+	error = 100000000.0
 	best_k = 0
+	bestClassifier = []
 	for k in kList:
 		knn = KNeighborsClassifier(n_neighbors = k)
 		knn.fit(trainData,trainTarget)
@@ -15,9 +17,10 @@ def evaluateKNN(trainData, trainTarget, testData, testTarget):
 		if(error_temp < error):
 			error = error_temp
 			best_k = k
+			bestClassifier = knn
 	#print "KNN error = %f" %error
 	#print "for k = %d" %best_k
-	return error, best_k
+	return error, best_k, bestClassifier
 
 def random(X,Y):
 	z = zip(X,Y)
@@ -48,12 +51,14 @@ def KFoldValidation_KNN(X,Y):
 	total_error = 0.0
 	for i in range(10):
 		a,b,c,d = get10Fold_n(X,Y,i)
-		error, bestk = evaluateKNN(a,b,c,d )
+		error, bestk, bestClassifier = evaluateKNN(a,b,c,d )
 		print "fold %d:  error:  %f  , best k: %d" %(i+1,error,bestk)
 		total_error += error
 	total_error = (float(total_error)/len(Y))*100
 	print "total error: %f %%" %total_error
-	return total_error
+	return total_error, bestClassifier
+
+#TODO# def KFoldValidatin_CLASSIFIER2,3...(X,Y)
 
 def OAOPairList(Y):#getOAOPairList
 	#returns OneAgainstOne pairs list, for a given target list 'Y'
@@ -75,20 +80,48 @@ def OAODataSet(X,Y,OAOPair):#getOAODataSet
 			newY.append(Y[i])
 	return newX, newY
 
-def OAOValidation(X,Y):
+def DOAO(X,Y):
 	pairs = OAOPairList(Y)
 	bestError = 100
 	bestPair = []
+	classifierSet = []
 	for p in pairs:
 		print "for classes: %d and %d:" %(p[0],p[1])
 		nx, ny = OAODataSet(X,Y,p)
-		error = KFoldValidation_KNN(nx,ny)
+		error, best_knn = KFoldValidation_KNN(nx,ny)
+		#TODO# error2, bestclassifier2 = KFoldValidatin_CLASSIFIER2(nx,ny)
+		#(find the best error)
+		classifierSet.append(best_knn) #TODO# change to append the best classifier
 		if (bestError > error):
 			bestError = error
 			bestPair = p
 	print "\nBEST ERROR: %f %% | for class %d vs %d" %(bestError,bestPair[0],bestPair[1])
-	return bestError, bestPair
+	return classifierSet
 
+def OAOValidation(X,Y,classifierSet):
+	##== OAO-KNN
+	total_error = 0
+	for i in range(10):
+		trd,trt,ted,tet= get10Fold_n(X,Y,i)
+		for c in classifierSet:
+			c.fit(trd,trt)
+		for j in range(len(ted)):
+			votes = []
+			for c in classifierSet:
+				votes.append(c.predict(ted[j])[0])
+			if (apureVotes(votes) != tet[j]): 
+				total_error += 1
+	return (float(total_error)/len(Y))*100
+
+##TODO# def DOAOValidation(X,Y,classifierSet):
+#sera igual, apenas no classifierSet pode vir diferentes classificadores
+
+def apureVotes(li):
+	return ctr(li).most_common(1)[0][0]
+
+def KNN_OARValidation(X,Y):
+	error,c = KFoldValidation_KNN(X,Y)
+	return (float(error)/len(Y))*100
 
 print "-----Avaliando KNN para IRIS - KFOLD-cross validation (10 folds)OAR"
 iris = datasets.load_iris()
@@ -96,4 +129,8 @@ X, y = iris.data, iris.target
 X,y = random(X,y)
 KFoldValidation_KNN(X,y)
 print "-----Avaliando KNN para IRIS - KFOLD-cross validation (10 folds) OAO"
-OAOValidation(X,y)
+doao = DOAO(X,y)
+print "-----KNN-OAO Validation Error:-----"
+print OAOValidation(X,y,doao)
+print "-----KNN-OAR Validation Error:-----"
+print KNN_OARValidation(X,y)
