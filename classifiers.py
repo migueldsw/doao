@@ -119,18 +119,24 @@ def OAOValidation(X,Y,classifierSet):
 def apureVotes(li):
 	return ctr(li).most_common(1)[0][0]
 
-def KNN_OARValidation(X,Y):
-	error,c = KFoldValidation_KNN(X,Y)
-	return (float(error)/len(Y))*100
+def OARValidation(X,Y,classifier):
+	total_error = 0
+	for i in range(10):
+		trd,trt,ted,tet= get10Fold_n(X,Y,i)
+		classifier.fit(trd,trt)
+		for j in range(len(ted)):
+			if (classifier.predict(ted[j])[0] != tet[j]): 
+				total_error += 1
+	return (float(total_error)/len(Y))*100
 
 print "-----Avaliando KNN para IRIS - KFOLD-cross validation (10 folds)OAR"
 iris = datasets.load_iris()
 X, y = iris.data, iris.target
 X,y = random(X,y)
-KFoldValidation_KNN(X,y)
+e, knn = KFoldValidation_KNN(X,y)
 print "-----Avaliando KNN para IRIS - KFOLD-cross validation (10 folds) OAO"
 doao = DOAO(X,y)
 print "-----KNN-OAO Validation Error:-----"
 print OAOValidation(X,y,doao)
 print "-----KNN-OAR Validation Error:-----"
-print KNN_OARValidation(X,y)
+print OARValidation(X,y,knn)
