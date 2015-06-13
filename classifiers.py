@@ -1,12 +1,15 @@
 import numpy as np
+import time
 from sklearn import datasets
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
 from collections import Counter as ctr
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
-
-CLASSIFIERSLISTNAME = ["LR", "KNN", "SVM", "DT"]
+from sklearn.lda import LDA
+import neurolab as nl#
+from datasets import DATA
+CLASSIFIERSLISTNAME = ["LR", "KNN", "SVM", "DT", "LDA"]
 
 def evaluateKNN(trainData, trainTarget, testData, testTarget):
 	kList = [1,3,5,7,10,20,30]#1,3,5,7,10,20,30
@@ -26,6 +29,22 @@ def evaluateKNN(trainData, trainTarget, testData, testTarget):
 	#print "KNN error = %f" %error
 	#print "for k = %d" %best_k
 	return error, best_k, bestClassifier
+
+def evaluateANN(trainData, trainTarget, testData, testTarget):
+	hiddenList=range(3,21)#no. hidden nodes
+	error = 1000000.0
+	bestClassifier = []
+	for h in hiddenList:
+		ann = ANN(hiddenLayerNodes = h, maxIterations = 300, backPropagation = True) #TODO#
+		ann.FIT(trainData,trainTarget) #TODO#
+		error_temp = 0.0
+		for i in range(len(testData)):
+			prediction = ann.PREDICT(testData[i]) #class prediction# TODO #
+			if (prediction != testTarget[i]): error_temp += 1.0
+		if(error_temp < error):
+			error = error_temp
+			bestClassifier = ann
+	return error, bestClassifier
 
 def evaluateDT(trainData, trainTarget, testData, testTarget):
 	mLeafList = [1,2,3,5] # Min. datapoints  in a LEAF node
@@ -57,6 +76,15 @@ def evaluateLR(trainData, trainTarget, testData, testTarget):
 		if (lr.predict(testData[i])[0] != testTarget[i]): error += 1.0
 	return error, lr
 
+def evaluateLDA(trainData, trainTarget, testData, testTarget):
+#http://scikit-learn.org/stable/auto_examples/classification/plot_lda.html#example-classification-plot-lda-py
+	error = 0.0
+	lda = LDA()
+	lda.fit(trainData,trainTarget)
+	for i in range(len(testData)):
+		if (lda.predict(testData[i])[0] != testTarget[i]): error += 1.0
+	return error, lda
+
 def evaluateSVM(trainData, trainTarget, testData, testTarget):
 #http://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html#sklearn.svm.SVC
 	cList = [2**i for i in range (-3,11)] # param. C (SVM)
@@ -81,7 +109,7 @@ def evaluateSVM(trainData, trainTarget, testData, testTarget):
 			bestClassifier = svm
 	#print "SVM:: ERROR: %d" %error
 	return error, bestClassifier
-	
+
 def random(X,Y):
 	z = zip(X,Y)
 	np.random.shuffle(z)
@@ -120,7 +148,10 @@ def KFoldValidation(X,Y,classifierName):
 			error, bestClassifier = evaluateLR(a,b,c,d )
 		elif classifierName == "SVM":
 			error, bestClassifier = evaluateSVM(a,b,c,d )
-		#TODO#elif classifierName == .....
+		elif classifierName == "LDA":
+			error, bestClassifier = evaluateLDA(a,b,c,d )
+		elif classifierName == "ANN":
+			error, bestClassifier = evaluateANN(a,b,c,d )
 		total_error += error
 	total_error = (float(total_error)/len(Y))*100
 	#print "total error: %f %%" %total_error
@@ -227,9 +258,19 @@ def main(X,Y):
 	print "DOAO (PROPOSED):"
 	print OAOValidation(X,y,doao)
 
+def getTime():#in seconds
+	return int(round(time.time() * 1000))
+
 ##EXECUTE#############
 print "----MAIN----"
-iris = datasets.load_iris()
-X, y = iris.data, iris.target
+#iris = datasets.load_iris()
+#X, y = iris.data, iris.target
+
+(X,y) = DATA['iris']
+
 X,y = random(X,y)
 main(X,y)
+
+#print "run in all datasets"
+#for key, value in DATA.iteritems():
+#	print key
