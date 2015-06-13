@@ -3,6 +3,7 @@ from sklearn import datasets
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
 from collections import Counter as ctr
+from sklearn.linear_model import LogisticRegression
 
 def evaluateKNN(trainData, trainTarget, testData, testTarget):
 	kList = [1,3,5,7,10,20,30]#1,3,5,7,10,20,30
@@ -44,6 +45,14 @@ def evaluateDT(trainData, trainTarget, testData, testTarget):
 			bestClassifier = dt
 	return error, bestClassifier
 
+def evaluateLR(trainData, trainTarget, testData, testTarget):
+	error = 0.0
+	lr = LogisticRegression()
+	lr.fit(trainData,trainTarget)
+	for i in range(len(testData)):
+		if (lr.predict(testData[i])[0] != testTarget[i]): error += 1.0
+	return error, lr
+
 def random(X,Y):
 	z = zip(X,Y)
 	np.random.shuffle(z)
@@ -78,6 +87,8 @@ def KFoldValidation(X,Y,classifierName):
 			error, bestk, bestClassifier = evaluateKNN(a,b,c,d )
 		elif classifierName == "DT":
 			error, bestClassifier = evaluateDT(a,b,c,d )
+		elif classifierName == "LR":
+			error, bestClassifier = evaluateLR(a,b,c,d )
 		#TODO#elif classifierName == .....
 		total_error += error
 	total_error = (float(total_error)/len(Y))*100
@@ -119,7 +130,7 @@ def OAO(X,Y,classifierName):
 		if (bestError > error):
 			bestError = error
 			bestPair = p
-	print "\nBEST ERROR: %f %% | for class %d vs %d" %(bestError,bestPair[0],bestPair[1])
+	#print "\nBEST ERROR: %f %% | for class %d vs %d" %(bestError,bestPair[0],bestPair[1])
 	return classifierSet
 
 def DOAO(X,Y):
@@ -132,7 +143,7 @@ def DOAO(X,Y):
 		classifierErrorList = []
 		clfNameErrList = []
 		nx, ny = OAODataSet(X,Y,p)
-		for classifierName in ["KNN","DT"]:
+		for classifierName in ["KNN","DT", "LR"]:
 			error, classifier = KFoldValidation(nx,ny,classifierName)
 			classifierErrorList.append((classifier,error))
 			clfNameErrList.append((classifierName,error))
@@ -144,7 +155,6 @@ def DOAO(X,Y):
 	#print "\nBEST ERROR: %f %% | for class %d vs %d" %(bestError,bestPair[0],bestPair[1])
 	return classifierSet
 
-tpl = [(1,0.7),(2,0.1),(3,8)]
 def takeMin(tupleList):
 	return min(tupleList, key = lambda t: t[1])[0]
 
@@ -163,9 +173,6 @@ def OAOValidation(X,Y,classifierSet):
 				total_error += 1
 	return (float(total_error)/len(Y))*100
 
-##TODO# def DOAOValidation(X,Y,classifierSet):
-#sera igual, apenas no classifierSet pode vir diferentes classificadores
-
 def apureVotes(li):
 	return ctr(li).most_common(1)[0][0]
 
@@ -179,25 +186,16 @@ def OARValidation(X,Y,classifier):
 				total_error += 1
 	return (float(total_error)/len(Y))*100
 
-def OAO_OAR_KNN(X,y):
-	e, knn = KFoldValidation(X,y,"KNN")
-	print "-----Avaliando KNN para IRIS - KFOLD-cross validation (10 folds) OAO_OAR"
-	oao = OAO(X,y,"KNN")
-	print "-----KNN-OAO Validation Error:-----"
-	print OAOValidation(X,y,oao)
-	print "-----KNN-OAR Validation Error:-----"
-	print OARValidation(X,y,knn)
-def OAO_OAR_DT(X,y):
-	e, knn = KFoldValidation(X,y,"DT")
-	print "-----Avaliando DT para IRIS - KFOLD-cross validation (10 folds) OAO_OAR"
-	oao = OAO(X,y,"DT")
-	print "-----DT-OAO Validation Error:-----"
-	print OAOValidation(X,y,oao)
-	print "-----DT-OAR Validation Error:-----"
-	print OARValidation(X,y,knn)
-def DOAO_EXEC(X,y):
+def main(X,Y):
+	for clName in ["KNN", "DT", "LR"]:
+		e, cl = KFoldValidation(X,Y, clName)
+		oao = OAO(X,Y,clName)
+		print clName + "-OAR:"
+		print OARValidation(X,Y,cl)
+		print clName + "-OAO:"
+		print OAOValidation(X,Y,oao)
 	doao = DOAO(X,y,)
-	print "-----DOAO (PROPOSED) Validation Error:-----"
+	print "DOAO (PROPOSED):"
 	print OAOValidation(X,y,doao)
 
 ##EXECUTE#############
@@ -205,6 +203,4 @@ print "----MAIN----"
 iris = datasets.load_iris()
 X, y = iris.data, iris.target
 X,y = random(X,y)
-OAO_OAR_KNN(X,y)
-OAO_OAR_DT(X,y)
-DOAO_EXEC(X,y)
+main(X,y)
