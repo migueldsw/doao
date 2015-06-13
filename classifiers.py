@@ -4,10 +4,13 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
 from collections import Counter as ctr
 from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+
+CLASSIFIERSLISTNAME = ["LR", "KNN", "SVM", "DT"]
 
 def evaluateKNN(trainData, trainTarget, testData, testTarget):
 	kList = [1,3,5,7,10,20,30]#1,3,5,7,10,20,30
-	error = 100000000.0
+	error = 1000000.0
 	best_k = 0
 	bestClassifier = []
 	for k in kList:
@@ -29,7 +32,7 @@ def evaluateDT(trainData, trainTarget, testData, testTarget):
 	mParentList = [5,10] #Min. datapoints  in a PARENT node
 	prune = True #prune
 	dtList = []#classifier list
-	error = 100000000.0
+	error = 1000000.0
 	bestClassifier = []
 	for l in mLeafList:
 		for p in mParentList:
@@ -46,6 +49,7 @@ def evaluateDT(trainData, trainTarget, testData, testTarget):
 	return error, bestClassifier
 
 def evaluateLR(trainData, trainTarget, testData, testTarget):
+#http://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html#sklearn.linear_model.LogisticRegression
 	error = 0.0
 	lr = LogisticRegression()
 	lr.fit(trainData,trainTarget)
@@ -53,6 +57,31 @@ def evaluateLR(trainData, trainTarget, testData, testTarget):
 		if (lr.predict(testData[i])[0] != testTarget[i]): error += 1.0
 	return error, lr
 
+def evaluateSVM(trainData, trainTarget, testData, testTarget):
+#http://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html#sklearn.svm.SVC
+	cList = [2**i for i in range (-3,11)] # param. C (SVM)
+	sigmaList = [2**i for i in range (-5,6)] #param sigma (SVM)
+	#cList=[1]
+	#sigmaList=[0]
+	#kernel -> (default='rbf') 
+	svmList = []#classifier list
+	error = 1000000.0
+	bestClassifier = []
+	for c in cList:
+		for sigma in sigmaList:
+			svm = SVC(C=c,gamma=sigma)
+			svm.fit(trainData,trainTarget)
+			svmList.append(svm)
+	for svm in svmList:
+		error_temp = 0.0
+		for i in range(len(testData)):
+			if (svm.predict(testData[i])[0] != testTarget[i]): error_temp += 1.0
+		if(error_temp <= error): 
+			error = error_temp
+			bestClassifier = svm
+	#print "SVM:: ERROR: %d" %error
+	return error, bestClassifier
+	
 def random(X,Y):
 	z = zip(X,Y)
 	np.random.shuffle(z)
@@ -89,6 +118,8 @@ def KFoldValidation(X,Y,classifierName):
 			error, bestClassifier = evaluateDT(a,b,c,d )
 		elif classifierName == "LR":
 			error, bestClassifier = evaluateLR(a,b,c,d )
+		elif classifierName == "SVM":
+			error, bestClassifier = evaluateSVM(a,b,c,d )
 		#TODO#elif classifierName == .....
 		total_error += error
 	total_error = (float(total_error)/len(Y))*100
@@ -123,10 +154,8 @@ def OAO(X,Y,classifierName):
 	for p in pairs:
 		#print "for classes: %d and %d:" %(p[0],p[1])
 		nx, ny = OAODataSet(X,Y,p)
-		error, best_knn = KFoldValidation(nx,ny,classifierName)
-		#TODO# error2, bestclassifier2 = KFoldValidatin_CLASSIFIER2(nx,ny)
-		#(find the best error)
-		classifierSet.append(best_knn) #TODO# change to append the best classifier
+		error, cls = KFoldValidation(nx,ny,classifierName)
+		classifierSet.append(cls)
 		if (bestError > error):
 			bestError = error
 			bestPair = p
@@ -143,7 +172,7 @@ def DOAO(X,Y):
 		classifierErrorList = []
 		clfNameErrList = []
 		nx, ny = OAODataSet(X,Y,p)
-		for classifierName in ["KNN","DT", "LR"]:
+		for classifierName in CLASSIFIERSLISTNAME:
 			error, classifier = KFoldValidation(nx,ny,classifierName)
 			classifierErrorList.append((classifier,error))
 			clfNameErrList.append((classifierName,error))
@@ -187,7 +216,7 @@ def OARValidation(X,Y,classifier):
 	return (float(total_error)/len(Y))*100
 
 def main(X,Y):
-	for clName in ["KNN", "DT", "LR"]:
+	for clName in CLASSIFIERSLISTNAME:
 		e, cl = KFoldValidation(X,Y, clName)
 		oao = OAO(X,Y,clName)
 		print clName + "-OAR:"
