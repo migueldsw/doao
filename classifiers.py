@@ -78,12 +78,11 @@ def KFoldValidation(X,Y,classifierName):
 			error, bestk, bestClassifier = evaluateKNN(a,b,c,d )
 		elif classifierName == "DT":
 			error, bestClassifier = evaluateDT(a,b,c,d )
+		#TODO#elif classifierName == .....
 		total_error += error
 	total_error = (float(total_error)/len(Y))*100
 	#print "total error: %f %%" %total_error
 	return total_error, bestClassifier
-
-#TODO# def KFoldValidatin_CLASSIFIER2,3...(X,Y)
 
 def OAOPairList(Y):#getOAOPairList
 	#returns OneAgainstOne pairs list, for a given target list 'Y'
@@ -130,16 +129,24 @@ def DOAO(X,Y):
 	classifierSet = []
 	for p in pairs:
 		#print "for classes: %d and %d:" %(p[0],p[1])
+		classifierErrorList = []
+		clfNameErrList = []
 		nx, ny = OAODataSet(X,Y,p)
-		error, best_knn = KFoldValidation(nx,ny,"KNN")
-		#TODO# error2, bestclassifier2 = KFoldValidatin_CLASSIFIER2(nx,ny)
-		#(find the best error)
-		classifierSet.append(best_knn) #TODO# change to append the best classifier
-		if (bestError > error):
-			bestError = error
-			bestPair = p
-	print "\nBEST ERROR: %f %% | for class %d vs %d" %(bestError,bestPair[0],bestPair[1])
+		for classifierName in ["KNN","DT"]:
+			error, classifier = KFoldValidation(nx,ny,classifierName)
+			classifierErrorList.append((classifier,error))
+			clfNameErrList.append((classifierName,error))
+		classifierSet.append(takeMin(classifierErrorList)) #TODO# change to append the best classifier
+		print ("DOAO <- " + takeMin(clfNameErrList) + " pair: (%d,%d)") %(p[0],p[1])
+		#if (bestError > error):
+		#	bestError = error
+		#	bestPair = p
+	#print "\nBEST ERROR: %f %% | for class %d vs %d" %(bestError,bestPair[0],bestPair[1])
 	return classifierSet
+
+tpl = [(1,0.7),(2,0.1),(3,8)]
+def takeMin(tupleList):
+	return min(tupleList, key = lambda t: t[1])[0]
 
 def OAOValidation(X,Y,classifierSet):
 	##== OAO-KNN
@@ -188,7 +195,10 @@ def OAO_OAR_DT(X,y):
 	print OAOValidation(X,y,oao)
 	print "-----DT-OAR Validation Error:-----"
 	print OARValidation(X,y,knn)
-
+def DOAO_EXEC(X,y):
+	doao = DOAO(X,y,)
+	print "-----DOAO (PROPOSED) Validation Error:-----"
+	print OAOValidation(X,y,doao)
 
 ##EXECUTE#############
 print "----MAIN----"
@@ -197,4 +207,4 @@ X, y = iris.data, iris.target
 X,y = random(X,y)
 OAO_OAR_KNN(X,y)
 OAO_OAR_DT(X,y)
-
+DOAO_EXEC(X,y)
