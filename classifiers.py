@@ -291,8 +291,6 @@ def Validation(X,Y,classifierSet):
 def apureVotes(li):
 	return ctr(li).most_common(1)[0][0]
 
-def main(X,Y):
-	return 1
 
 def getTime():#in seconds
 	return int(round(time.time() * 1000))
@@ -300,7 +298,7 @@ def getTime():#in seconds
 def resultsCompDataset(datasetName,numExecutions):
 	(data,target) = DATA[datasetName]
 	csvLineOut = ""
-	sep = "\n"
+	sep = ","
 	X = []
 	Y = []
 	for i in range(numExecutions):
@@ -338,23 +336,38 @@ def resultsCompDataset(datasetName,numExecutions):
 		er = Validation(X[i],Y[i],doao)
 		errorTotal += er
 		#print "ERRO: %f" %er
-	csvLineOut += "%.3f" %(float(errorTotal)/numExecutions)
-	print csvLineOut
+	csvLineOut += "%.3f\n" %(float(errorTotal)/numExecutions)
+	#print csvLineOut
 	return csvLineOut
+
+def writeFileTable(lines):
+	f = open('results.csv','w')
+	for l in lines:
+		f.write(l)
+	f.close()	
+
+def main():
+	lines = []
+	iterations = 5
+	print "itarations: %d"  %iterations
+	#for key, value in DATA.iteritems():
+	for key in ["zoo","iris","wine","seed","glass","ecoli","moviment","balance","landcover","vehicle","zoo","vowel","yeast","zoo","segment"]:
+		print "Data set: " + key
+		st = getTime()
+		line = resultsCompDataset('iris',iterations)
+		et = getTime()
+		dt = float(et-st)/1000
+		lines.append(line)
+		print "in %f seconds" %dt
+	writeFileTable(lines)
 
 
 ##EXECUTE#############
 print "----MAIN----"
+main()
 #iris = datasets.load_iris()
 #X, y = iris.data, iris.target
-
-(X,y) = DATA['iris']
-#main(X,y)
-st = getTime()
-resultsCompDataset('iris',1)
-et = getTime()
-dt = float(et-st)/1000
-print "in %f seconds" %dt
+#(X,y) = DATA['iris']
 #print "run in all datasets"
 #for key, value in DATA.iteritems():
 #	print key
