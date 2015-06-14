@@ -1,12 +1,19 @@
 import numpy as np
+import time
 from sklearn import datasets
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
 from collections import Counter as ctr
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+from sklearn.lda import LDA
+import neurolab as nl#
+from datasets import DATA
+CLASSIFIERSLISTNAME = ["LR", "KNN", "SVM", "DT", "LDA"]
 
 def evaluateKNN(trainData, trainTarget, testData, testTarget):
 	kList = [1,3,5,7,10,20,30]#1,3,5,7,10,20,30
-	error = 100000000.0
+	error = 1000000.0
 	best_k = 0
 	bestClassifier = []
 	for k in kList:
@@ -23,12 +30,28 @@ def evaluateKNN(trainData, trainTarget, testData, testTarget):
 	#print "for k = %d" %best_k
 	return error, best_k, bestClassifier
 
+def evaluateANN(trainData, trainTarget, testData, testTarget):
+	hiddenList=range(3,21)#no. hidden nodes
+	error = 1000000.0
+	bestClassifier = []
+	for h in hiddenList:
+		ann = ANN(hiddenLayerNodes = h, maxIterations = 300, backPropagation = True) #TODO#
+		ann.FIT(trainData,trainTarget) #TODO#
+		error_temp = 0.0
+		for i in range(len(testData)):
+			prediction = ann.PREDICT(testData[i]) #class prediction# TODO #
+			if (prediction != testTarget[i]): error_temp += 1.0
+		if(error_temp < error):
+			error = error_temp
+			bestClassifier = ann
+	return error, bestClassifier
+
 def evaluateDT(trainData, trainTarget, testData, testTarget):
 	mLeafList = [1,2,3,5] # Min. datapoints  in a LEAF node
 	mParentList = [5,10] #Min. datapoints  in a PARENT node
 	prune = True #prune
 	dtList = []#classifier list
-	error = 100000000.0
+	error = 1000000.0
 	bestClassifier = []
 	for l in mLeafList:
 		for p in mParentList:
@@ -42,6 +65,49 @@ def evaluateDT(trainData, trainTarget, testData, testTarget):
 		if(error_temp < error):
 			error = error_temp
 			bestClassifier = dt
+	return error, bestClassifier
+
+def evaluateLR(trainData, trainTarget, testData, testTarget):
+#http://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html#sklearn.linear_model.LogisticRegression
+	error = 0.0
+	lr = LogisticRegression()
+	lr.fit(trainData,trainTarget)
+	for i in range(len(testData)):
+		if (lr.predict(testData[i])[0] != testTarget[i]): error += 1.0
+	return error, lr
+
+def evaluateLDA(trainData, trainTarget, testData, testTarget):
+#http://scikit-learn.org/stable/auto_examples/classification/plot_lda.html#example-classification-plot-lda-py
+	error = 0.0
+	lda = LDA()
+	lda.fit(trainData,trainTarget)
+	for i in range(len(testData)):
+		if (lda.predict(testData[i])[0] != testTarget[i]): error += 1.0
+	return error, lda
+
+def evaluateSVM(trainData, trainTarget, testData, testTarget):
+#http://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html#sklearn.svm.SVC
+	cList = [2**i for i in range (-3,11)] # param. C (SVM)
+	sigmaList = [2**i for i in range (-5,6)] #param sigma (SVM)
+	#cList=[1]
+	#sigmaList=[0]
+	#kernel -> (default='rbf') 
+	svmList = []#classifier list
+	error = 1000000.0
+	bestClassifier = []
+	for c in cList:
+		for sigma in sigmaList:
+			svm = SVC(C=c,gamma=sigma)
+			svm.fit(trainData,trainTarget)
+			svmList.append(svm)
+	for svm in svmList:
+		error_temp = 0.0
+		for i in range(len(testData)):
+			if (svm.predict(testData[i])[0] != testTarget[i]): error_temp += 1.0
+		if(error_temp <= error): 
+			error = error_temp
+			bestClassifier = svm
+	#print "SVM:: ERROR: %d" %error
 	return error, bestClassifier
 
 def random(X,Y):
@@ -78,12 +144,18 @@ def KFoldValidation(X,Y,classifierName):
 			error, bestk, bestClassifier = evaluateKNN(a,b,c,d )
 		elif classifierName == "DT":
 			error, bestClassifier = evaluateDT(a,b,c,d )
+		elif classifierName == "LR":
+			error, bestClassifier = evaluateLR(a,b,c,d )
+		elif classifierName == "SVM":
+			error, bestClassifier = evaluateSVM(a,b,c,d )
+		elif classifierName == "LDA":
+			error, bestClassifier = evaluateLDA(a,b,c,d )
+		elif classifierName == "ANN":
+			error, bestClassifier = evaluateANN(a,b,c,d )
 		total_error += error
 	total_error = (float(total_error)/len(Y))*100
 	#print "total error: %f %%" %total_error
 	return total_error, bestClassifier
-
-#TODO# def KFoldValidatin_CLASSIFIER2,3...(X,Y)
 
 def OAOPairList(Y):#getOAOPairList
 	#returns OneAgainstOne pairs list, for a given target list 'Y'
@@ -113,14 +185,12 @@ def OAO(X,Y,classifierName):
 	for p in pairs:
 		#print "for classes: %d and %d:" %(p[0],p[1])
 		nx, ny = OAODataSet(X,Y,p)
-		error, best_knn = KFoldValidation(nx,ny,classifierName)
-		#TODO# error2, bestclassifier2 = KFoldValidatin_CLASSIFIER2(nx,ny)
-		#(find the best error)
-		classifierSet.append(best_knn) #TODO# change to append the best classifier
+		error, cls = KFoldValidation(nx,ny,classifierName)
+		classifierSet.append(cls)
 		if (bestError > error):
 			bestError = error
 			bestPair = p
-	print "\nBEST ERROR: %f %% | for class %d vs %d" %(bestError,bestPair[0],bestPair[1])
+	#print "\nBEST ERROR: %f %% | for class %d vs %d" %(bestError,bestPair[0],bestPair[1])
 	return classifierSet
 
 def DOAO(X,Y):
@@ -130,16 +200,23 @@ def DOAO(X,Y):
 	classifierSet = []
 	for p in pairs:
 		#print "for classes: %d and %d:" %(p[0],p[1])
+		classifierErrorList = []
+		clfNameErrList = []
 		nx, ny = OAODataSet(X,Y,p)
-		error, best_knn = KFoldValidation(nx,ny,"KNN")
-		#TODO# error2, bestclassifier2 = KFoldValidatin_CLASSIFIER2(nx,ny)
-		#(find the best error)
-		classifierSet.append(best_knn) #TODO# change to append the best classifier
-		if (bestError > error):
-			bestError = error
-			bestPair = p
-	print "\nBEST ERROR: %f %% | for class %d vs %d" %(bestError,bestPair[0],bestPair[1])
+		for classifierName in CLASSIFIERSLISTNAME:
+			error, classifier = KFoldValidation(nx,ny,classifierName)
+			classifierErrorList.append((classifier,error))
+			clfNameErrList.append((classifierName,error))
+		classifierSet.append(takeMin(classifierErrorList)) #TODO# change to append the best classifier
+		print ("DOAO <- " + takeMin(clfNameErrList) + " pair: (%d,%d)") %(p[0],p[1])
+		#if (bestError > error):
+		#	bestError = error
+		#	bestPair = p
+	#print "\nBEST ERROR: %f %% | for class %d vs %d" %(bestError,bestPair[0],bestPair[1])
 	return classifierSet
+
+def takeMin(tupleList):
+	return min(tupleList, key = lambda t: t[1])[0]
 
 def OAOValidation(X,Y,classifierSet):
 	##== OAO-KNN
@@ -156,9 +233,6 @@ def OAOValidation(X,Y,classifierSet):
 				total_error += 1
 	return (float(total_error)/len(Y))*100
 
-##TODO# def DOAOValidation(X,Y,classifierSet):
-#sera igual, apenas no classifierSet pode vir diferentes classificadores
-
 def apureVotes(li):
 	return ctr(li).most_common(1)[0][0]
 
@@ -172,29 +246,31 @@ def OARValidation(X,Y,classifier):
 				total_error += 1
 	return (float(total_error)/len(Y))*100
 
-def OAO_OAR_KNN(X,y):
-	e, knn = KFoldValidation(X,y,"KNN")
-	print "-----Avaliando KNN para IRIS - KFOLD-cross validation (10 folds) OAO_OAR"
-	oao = OAO(X,y,"KNN")
-	print "-----KNN-OAO Validation Error:-----"
-	print OAOValidation(X,y,oao)
-	print "-----KNN-OAR Validation Error:-----"
-	print OARValidation(X,y,knn)
-def OAO_OAR_DT(X,y):
-	e, knn = KFoldValidation(X,y,"DT")
-	print "-----Avaliando DT para IRIS - KFOLD-cross validation (10 folds) OAO_OAR"
-	oao = OAO(X,y,"DT")
-	print "-----DT-OAO Validation Error:-----"
-	print OAOValidation(X,y,oao)
-	print "-----DT-OAR Validation Error:-----"
-	print OARValidation(X,y,knn)
+def main(X,Y):
+	for clName in CLASSIFIERSLISTNAME:
+		e, cl = KFoldValidation(X,Y, clName)
+		oao = OAO(X,Y,clName)
+		print clName + "-OAR:"
+		print OARValidation(X,Y,cl)
+		print clName + "-OAO:"
+		print OAOValidation(X,Y,oao)
+	doao = DOAO(X,y,)
+	print "DOAO (PROPOSED):"
+	print OAOValidation(X,y,doao)
 
+def getTime():#in seconds
+	return int(round(time.time() * 1000))
 
 ##EXECUTE#############
 print "----MAIN----"
-iris = datasets.load_iris()
-X, y = iris.data, iris.target
-X,y = random(X,y)
-OAO_OAR_KNN(X,y)
-OAO_OAR_DT(X,y)
+#iris = datasets.load_iris()
+#X, y = iris.data, iris.target
 
+(X,y) = DATA['iris']
+
+X,y = random(X,y)
+main(X,y)
+
+#print "run in all datasets"
+#for key, value in DATA.iteritems():
+#	print key
