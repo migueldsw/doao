@@ -9,7 +9,7 @@ from sklearn.svm import SVC
 from sklearn.lda import LDA
 import neurolab as nl#
 from datasets import DATA
-CLASSIFIERSLISTNAME = ["LR", "KNN", "SVM", "DT", "LDA"]
+CLASSIFIERSLISTNAME = ["LR", "KNN", "SVM", "DT", "LDA", "ANN"]
 
 def evaluateKNN(trainData, trainTarget, testData, testTarget):
 	kList = [1,3,5,7,10,20,30]#1,3,5,7,10,20,30
@@ -31,6 +31,7 @@ def evaluateKNN(trainData, trainTarget, testData, testTarget):
 	return error, best_k, bestClassifier
 
 def evaluateANN(trainData, trainTarget, testData, testTarget):
+	return 100.00, LogisticRegression() #JUST TEST # TODO: REMOVE
 	hiddenList=range(3,21)#no. hidden nodes
 	error = 1000000.0
 	bestClassifier = []
@@ -45,6 +46,7 @@ def evaluateANN(trainData, trainTarget, testData, testTarget):
 			error = error_temp
 			bestClassifier = ann
 	return error, bestClassifier
+	return 100.00, LogisticRegression() #JUST TEST # TODO: REMOVE
 
 def evaluateDT(trainData, trainTarget, testData, testTarget):
 	mLeafList = [1,2,3,5] # Min. datapoints  in a LEAF node
@@ -193,6 +195,35 @@ def OAO(X,Y,classifierName):
 	#print "\nBEST ERROR: %f %% | for class %d vs %d" %(bestError,bestPair[0],bestPair[1])
 	return classifierSet
 
+def OARClassList(Y): #returns a list with the classes in Y
+	classes = np.unique(Y)
+	classes.sort()
+	return classes
+
+def OARDataSet(X,Y,classe):
+	newX, newY = [], []
+	for i in range(len(Y)):
+		if (Y[i] == classe):
+			newX.append(X[i])
+			newY.append(1)
+		else:
+			newX.append(X[i])
+			newY.append(0)
+	return newX, newY
+
+def OAR(X,Y,classifierName):
+	classes = OARClassList(Y)
+	bestError = 100
+	classifierSet = []
+	for c in classes:
+		#print "for class: %d:" %(c)
+		nx, ny = OARDataSet(X,Y,c)
+		error, cls = KFoldValidation(nx,ny,classifierName)
+		classifierSet.append(cls)
+		if (bestError > error):
+			bestError = error
+	return classifierSet
+
 def DOAO(X,Y):
 	pairs = OAOPairList(Y)
 	bestError = 100
@@ -207,7 +238,7 @@ def DOAO(X,Y):
 			error, classifier = KFoldValidation(nx,ny,classifierName)
 			classifierErrorList.append((classifier,error))
 			clfNameErrList.append((classifierName,error))
-		classifierSet.append(takeMin(classifierErrorList)) #TODO# change to append the best classifier
+		classifierSet.append(takeMin(classifierErrorList))
 		print ("DOAO <- " + takeMin(clfNameErrList) + " pair: (%d,%d)") %(p[0],p[1])
 		#if (bestError > error):
 		#	bestError = error
@@ -215,11 +246,35 @@ def DOAO(X,Y):
 	#print "\nBEST ERROR: %f %% | for class %d vs %d" %(bestError,bestPair[0],bestPair[1])
 	return classifierSet
 
+
+def VOTE_Validation(X,Y):
+	pairs = OAOPairList(Y)
+	total_error = 0
+	for p in pairs:
+		classifierSet = []
+		#print "for classes: %d and %d:" %(p[0],p[1])
+		nx, ny = OAODataSet(X,Y,p)
+		for classifierName in CLASSIFIERSLISTNAME:
+			error, classifier = KFoldValidation(nx,ny,classifierName)
+			classifierSet.append(classifier)
+		nx,ny = random(nx,ny)
+		for i in range(10):
+			trd,trt,ted,tet= get10Fold_n(nx,ny,i)
+			for c in classifierSet:
+				c.fit(trd,trt)
+			for j in range(len(ted)):
+				votes = []
+				for c in classifierSet:
+					votes.append(c.predict(ted[j])[0])
+				if (apureVotes(votes) != tet[j]): 
+					total_error += 1
+	return (float(total_error)/len(Y))*100
+
 def takeMin(tupleList):
 	return min(tupleList, key = lambda t: t[1])[0]
 
-def OAOValidation(X,Y,classifierSet):
-	##== OAO-KNN
+def Validation(X,Y,classifierSet):
+	##== OAO and OAR, by classifiers votes 
 	total_error = 0
 	for i in range(10):
 		trd,trt,ted,tet= get10Fold_n(X,Y,i)
@@ -236,41 +291,84 @@ def OAOValidation(X,Y,classifierSet):
 def apureVotes(li):
 	return ctr(li).most_common(1)[0][0]
 
-def OARValidation(X,Y,classifier):
-	total_error = 0
-	for i in range(10):
-		trd,trt,ted,tet= get10Fold_n(X,Y,i)
-		classifier.fit(trd,trt)
-		for j in range(len(ted)):
-			if (classifier.predict(ted[j])[0] != tet[j]): 
-				total_error += 1
-	return (float(total_error)/len(Y))*100
-
-def main(X,Y):
-	for clName in CLASSIFIERSLISTNAME:
-		e, cl = KFoldValidation(X,Y, clName)
-		oao = OAO(X,Y,clName)
-		print clName + "-OAR:"
-		print OARValidation(X,Y,cl)
-		print clName + "-OAO:"
-		print OAOValidation(X,Y,oao)
-	doao = DOAO(X,y,)
-	print "DOAO (PROPOSED):"
-	print OAOValidation(X,y,doao)
 
 def getTime():#in seconds
 	return int(round(time.time() * 1000))
 
+def resultsCompDataset(datasetName,numExecutions):
+	(data,target) = DATA[datasetName]
+	csvLineOut = ""
+	sep = ","
+	X = []
+	Y = []
+	for i in range(numExecutions):
+		x,y = random(data,target)
+		X.append(x)
+		Y.append(y)
+	for clName in ["ANN", "DT","KNN","LDA","LR","SVM"]:
+		#OAR
+		errorTotal = 0
+		for i in range(numExecutions):
+			oar = OAR(X[i],Y[i],clName)
+			er = Validation(X[i],Y[i],oar)
+			errorTotal += er 
+			#print "ERRO: %f" %er
+		csvLineOut += "%.3f" %(float(errorTotal)/numExecutions) + sep
+	for clName in ["ANN", "DT","KNN","LDA","LR","SVM"]:
+		#OAO
+		errorTotal = 0
+		for i in range(numExecutions):
+			oao = OAO(X[i],Y[i],clName)  
+			er = Validation(X[i],Y[i],oao)
+			errorTotal += er 
+			#print "ERRO: %f" %er
+		csvLineOut += "%.3f" %(float(errorTotal)/numExecutions) + sep
+	#VOTE-OAO
+	errorTotal = 0
+	for i in range(numExecutions):
+		errorTotal += VOTE_Validation(X[i],Y[i])
+		errorTotal += 0
+	csvLineOut += "%.3f" %(float(errorTotal)/numExecutions) + sep
+	#DOAO(proposed)
+	errorTotal = 0
+	for i in range(numExecutions):
+		doao = DOAO(X[i],Y[i])  
+		er = Validation(X[i],Y[i],doao)
+		errorTotal += er
+		#print "ERRO: %f" %er
+	csvLineOut += "%.3f\n" %(float(errorTotal)/numExecutions)
+	#print csvLineOut
+	return csvLineOut
+
+def writeFileTable(lines):
+	f = open('results.csv','w')
+	for l in lines:
+		f.write(l)
+	f.close()	
+
+def main():
+	lines = []
+	iterations = 5
+	print "itarations: %d"  %iterations
+	#for key, value in DATA.iteritems():
+	for key in ["zoo","iris","wine","seed","glass","ecoli","moviment","balance","landcover","vehicle","zoo","vowel","yeast","zoo","segment"]:
+		print "Data set: " + key
+		st = getTime()
+		line = resultsCompDataset('iris',iterations)
+		et = getTime()
+		dt = float(et-st)/1000
+		lines.append(line)
+		print "in %f seconds" %dt
+	writeFileTable(lines)
+
+
 ##EXECUTE#############
 print "----MAIN----"
+main()
 #iris = datasets.load_iris()
 #X, y = iris.data, iris.target
-
-(X,y) = DATA['iris']
-
-X,y = random(X,y)
-main(X,y)
-
+#(X,y) = DATA['iris']
 #print "run in all datasets"
 #for key, value in DATA.iteritems():
 #	print key
+
