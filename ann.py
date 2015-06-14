@@ -13,7 +13,7 @@ class NeuralNetwork:
         size = len(data)
         return data.reshape(size, 1)
 
-    def fit(self, X, y, nodes, epochs=300, learning_rate=0.2):
+    def fit(self, X, y, epochs=300, learning_rate=0.2):
         """
         :Parameters:
             X: input data
