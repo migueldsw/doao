@@ -1,6 +1,5 @@
 import numpy as np
 import math
-import matplotlib.pyplot as plt
 from numpy import *
 from sklearn.datasets import fetch_mldata
 from sklearn import datasets
