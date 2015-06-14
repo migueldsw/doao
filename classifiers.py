@@ -195,6 +195,35 @@ def OAO(X,Y,classifierName):
 	#print "\nBEST ERROR: %f %% | for class %d vs %d" %(bestError,bestPair[0],bestPair[1])
 	return classifierSet
 
+def OARClassList(Y): #returns a list with the classes in Y
+	classes = np.unique(Y)
+	classes.sort()
+	return classes
+
+def OARDataSet(X,Y,classe):
+	newX, newY = [], []
+	for i in range(len(Y)):
+		if (Y[i] == classe):
+			newX.append(X[i])
+			newY.append(1)
+		else:
+			newX.append(X[i])
+			newY.append(0)
+	return newX, newY
+
+def OAR(X,Y,classifierName):
+	classes = OARClassList(Y)
+	bestError = 100
+	classifierSet = []
+	for c in classes:
+		#print "for class: %d:" %(c)
+		nx, ny = OARDataSet(X,Y,c)
+		error, cls = KFoldValidation(nx,ny,classifierName)
+		classifierSet.append(cls)
+		if (bestError > error):
+			bestError = error
+	return classifierSet
+
 def DOAO(X,Y):
 	pairs = OAOPairList(Y)
 	bestError = 100
@@ -220,8 +249,8 @@ def DOAO(X,Y):
 def takeMin(tupleList):
 	return min(tupleList, key = lambda t: t[1])[0]
 
-def OAOValidation(X,Y,classifierSet):
-	##== OAO-KNN
+def Validation(X,Y,classifierSet):
+	##== OAO and OAR, by classifiers votes 
 	total_error = 0
 	for i in range(10):
 		trd,trt,ted,tet= get10Fold_n(X,Y,i)
@@ -238,32 +267,14 @@ def OAOValidation(X,Y,classifierSet):
 def apureVotes(li):
 	return ctr(li).most_common(1)[0][0]
 
-def OARValidation(X,Y,classifier):
-	total_error = 0
-	for i in range(10):
-		trd,trt,ted,tet= get10Fold_n(X,Y,i)
-		classifier.fit(trd,trt)
-		for j in range(len(ted)):
-			if (classifier.predict(ted[j])[0] != tet[j]): 
-				total_error += 1
-	return (float(total_error)/len(Y))*100
-
 def main(X,Y):
-	for clName in CLASSIFIERSLISTNAME:
-		e, cl = KFoldValidation(X,Y, clName)
-		oao = OAO(X,Y,clName)
-		print clName + "-OAR:"
-		print OARValidation(X,Y,cl)
-		print clName + "-OAO:"
-		print OAOValidation(X,Y,oao)
-	doao = DOAO(X,y)
-	print "DOAO (PROPOSED):"
-	print OAOValidation(X,y,doao)
+	return 1
 
 def getTime():#in seconds
 	return int(round(time.time() * 1000))
 
-def resultsCompDataset(data,target,numExecutions):
+def resultsCompDataset(datasetName,numExecutions):
+	(data,target) = DATA[datasetName]
 	csvLineOut = ""
 	sep = "\n"
 	X = []
@@ -276,8 +287,8 @@ def resultsCompDataset(data,target,numExecutions):
 		#OAR
 		errorTotal = 0
 		for i in range(numExecutions):
-			e, c = KFoldValidation(X[i],Y[i], clName)  
-			er = OARValidation(X[i],Y[i],c)
+			oar = OAR(X[i],Y[i],clName)
+			er = Validation(X[i],Y[i],oar)
 			errorTotal += er 
 			#print "ERRO: %f" %er
 		csvLineOut += "%.3f" %(float(errorTotal)/numExecutions) + sep
@@ -286,7 +297,7 @@ def resultsCompDataset(data,target,numExecutions):
 		errorTotal = 0
 		for i in range(numExecutions):
 			oao = OAO(X[i],Y[i],clName)  
-			er = OAOValidation(X[i],Y[i],oao)
+			er = Validation(X[i],Y[i],oao)
 			errorTotal += er 
 			#print "ERRO: %f" %er
 		csvLineOut += "%.3f" %(float(errorTotal)/numExecutions) + sep
@@ -301,7 +312,7 @@ def resultsCompDataset(data,target,numExecutions):
 	errorTotal = 0
 	for i in range(numExecutions):
 		doao = DOAO(X[i],Y[i])  
-		er = OAOValidation(X[i],Y[i],doao)
+		er = Validation(X[i],Y[i],doao)
 		errorTotal += er
 		#print "ERRO: %f" %er
 	csvLineOut += "%.3f" %(float(errorTotal)/numExecutions)
@@ -317,7 +328,7 @@ print "----MAIN----"
 (X,y) = DATA['iris']
 #main(X,y)
 st = getTime()
-resultsCompDataset(X,y,10)
+resultsCompDataset('iris',2)
 et = getTime()
 dt = float(et-st)/1000
 print "in %f seconds" %dt
