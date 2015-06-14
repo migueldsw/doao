@@ -31,6 +31,7 @@ def evaluateKNN(trainData, trainTarget, testData, testTarget):
 	return error, best_k, bestClassifier
 
 def evaluateANN(trainData, trainTarget, testData, testTarget):
+	return 100.00, LogisticRegression() #JUST TEST # TODO: REMOVE
 	hiddenList=range(3,21)#no. hidden nodes
 	error = 1000000.0
 	bestClassifier = []
@@ -45,6 +46,7 @@ def evaluateANN(trainData, trainTarget, testData, testTarget):
 			error = error_temp
 			bestClassifier = ann
 	return error, bestClassifier
+	return 100.00, LogisticRegression() #JUST TEST # TODO: REMOVE
 
 def evaluateDT(trainData, trainTarget, testData, testTarget):
 	mLeafList = [1,2,3,5] # Min. datapoints  in a LEAF node
@@ -254,12 +256,58 @@ def main(X,Y):
 		print OARValidation(X,Y,cl)
 		print clName + "-OAO:"
 		print OAOValidation(X,Y,oao)
-	doao = DOAO(X,y,)
+	doao = DOAO(X,y)
 	print "DOAO (PROPOSED):"
 	print OAOValidation(X,y,doao)
 
 def getTime():#in seconds
 	return int(round(time.time() * 1000))
+
+def resultsCompDataset(data,target,numExecutions):
+	csvLineOut = ""
+	sep = "\n"
+	X = []
+	Y = []
+	for i in range(numExecutions):
+		x,y = random(data,target)
+		X.append(x)
+		Y.append(y)
+	for clName in ["ANN", "DT","KNN","LDA","LR","SVM"]:
+		#OAR
+		errorTotal = 0
+		for i in range(numExecutions):
+			e, c = KFoldValidation(X[i],Y[i], clName)  
+			er = OARValidation(X[i],Y[i],c)
+			errorTotal += er 
+			#print "ERRO: %f" %er
+		csvLineOut += "%.3f" %(float(errorTotal)/numExecutions) + sep
+	for clName in ["ANN", "DT","KNN","LDA","LR","SVM"]:
+		#OAO
+		errorTotal = 0
+		for i in range(numExecutions):
+			oao = OAO(X[i],Y[i],clName)  
+			er = OAOValidation(X[i],Y[i],oao)
+			errorTotal += er 
+			#print "ERRO: %f" %er
+		csvLineOut += "%.3f" %(float(errorTotal)/numExecutions) + sep
+	#VOTE-OAO
+	errorTotal = 0
+	for i in range(numExecutions):
+		#oao = OAO(X[i],Y[i],clName)  
+		#errorTotal += VOTEOAOValidation(X,Y,oao)TODO
+		errorTotal += 0
+	csvLineOut += "%.3f" %(float(errorTotal)/numExecutions) + sep
+	#DOAO(proposed)
+	errorTotal = 0
+	for i in range(numExecutions):
+		doao = DOAO(X[i],Y[i])  
+		er = OAOValidation(X[i],Y[i],doao)
+		errorTotal += er
+		#print "ERRO: %f" %er
+	csvLineOut += "%.3f" %(float(errorTotal)/numExecutions)
+	print csvLineOut
+	return csvLineOut
+
 
 ##EXECUTE#############
 print "----MAIN----"
@@ -267,10 +315,12 @@ print "----MAIN----"
 #X, y = iris.data, iris.target
 
 (X,y) = DATA['iris']
-
-X,y = random(X,y)
-main(X,y)
-
+#main(X,y)
+st = getTime()
+resultsCompDataset(X,y,10)
+et = getTime()
+dt = float(et-st)/1000
+print "in %f seconds" %dt
 #print "run in all datasets"
 #for key, value in DATA.iteritems():
 #	print key
