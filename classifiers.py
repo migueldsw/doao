@@ -9,7 +9,9 @@ from sklearn.svm import SVC
 from sklearn.lda import LDA
 import neurolab as nl#
 from datasets import DATA
+
 CLASSIFIERSLISTNAME = ["LR", "KNN", "SVM", "DT", "LDA", "ANN"]
+LOGLINES = []
 
 def evaluateKNN(trainData, trainTarget, testData, testTarget):
 	kList = [1,3,5,7,10,20,30]#1,3,5,7,10,20,30
@@ -229,6 +231,7 @@ def DOAO(X,Y):
 	bestError = 100
 	bestPair = []
 	classifierSet = []
+	classifierSetNames = []
 	for p in pairs:
 		#print "for classes: %d and %d:" %(p[0],p[1])
 		classifierErrorList = []
@@ -239,12 +242,14 @@ def DOAO(X,Y):
 			classifierErrorList.append((classifier,error))
 			clfNameErrList.append((classifierName,error))
 		classifierSet.append(takeMin(classifierErrorList))
+		classifierSetNames.append(takeMin(clfNameErrList))
 		print ("DOAO <- " + takeMin(clfNameErrList) + " pair: (%d,%d)") %(p[0],p[1])
+		LOGLINES.append(("DOAO <- " + takeMin(clfNameErrList) + " pair: (%d,%d)") %(p[0],p[1]))
 		#if (bestError > error):
 		#	bestError = error
 		#	bestPair = p
 	#print "\nBEST ERROR: %f %% | for class %d vs %d" %(bestError,bestPair[0],bestPair[1])
-	return classifierSet
+	return classifierSet, classifierSetNames
 
 
 def VOTE_Validation(X,Y):
@@ -299,6 +304,7 @@ def resultsCompDataset(datasetName,numExecutions):
 	(data,target) = DATA[datasetName]
 	csvLineOut = ""
 	sep = ","
+	doaoClassSelect = []
 	X = []
 	Y = []
 	for i in range(numExecutions):
@@ -332,43 +338,79 @@ def resultsCompDataset(datasetName,numExecutions):
 	#DOAO(proposed)
 	errorTotal = 0
 	for i in range(numExecutions):
-		doao = DOAO(X[i],Y[i])  
+		doao, clsNames = DOAO(X[i],Y[i])  
 		er = Validation(X[i],Y[i],doao)
 		errorTotal += er
+		doaoClassSelect += clsNames
 		#print "ERRO: %f" %er
+	LOGLINES.append(printTupleList(avgSelection(doaoClassSelect,numExecutions)))
+	print avgSelection(doaoClassSelect,numExecutions)
 	csvLineOut += "%.3f\n" %(float(errorTotal)/numExecutions)
 	#print csvLineOut
 	return csvLineOut
+
+def avgSelection(L,execs):
+	items = np.unique(L)
+	selections = []
+	for it in items:
+		c = 0.0
+		for l in L:
+			if (it == l ): c+=1.0
+		selections.append((it,c/execs))
+	return selections
 
 def writeFileTable(lines):
 	f = open('results.csv','w')
 	for l in lines:
 		f.write(l)
+	f.close()
+def writeFileLOG(lines):
+	f = open('LOG-EXEC.txt','w')
+	for l in lines:
+		f.write(l + "\n")
 	f.close()	
+
+def printTupleList(list):
+	str = ""
+	for i in list:
+		str += ("%s:%.2f  "%(i[0],i[1]))
+	return str
 
 def main():
 	lines = []
-	iterations = 5
+	iterations = 10
+	totalTime = 0.0
+	LOGLINES.append("itarations: %d"  %iterations)
 	print "itarations: %d"  %iterations
 	#for key, value in DATA.iteritems():
 	for key in ["zoo","iris","wine","seed","glass","ecoli","moviment","balance","landcover","vehicle","zoo","vowel","yeast","zoo","segment"]:
+		LOGLINES.append("-----------------")
+		LOGLINES.append("Data set: " + key)
+		print"-----------------"
 		print "Data set: " + key
 		st = getTime()
-		line = resultsCompDataset('iris',iterations)
+		line = resultsCompDataset(key,iterations)
 		et = getTime()
 		dt = float(et-st)/1000
 		lines.append(line)
+		totalTime += dt
+		LOGLINES.append("in %f seconds" %dt)
 		print "in %f seconds" %dt
+	LOGLINES.append("-----------------")
+	LOGLINES.append( "Total Time Execution(s): %.2f" %totalTime)
+	print"-----------------"
+	print "Total Time Execution(s): %.2f" %totalTime
+	print "end"
+	LOGLINES.append("---END---")
 	writeFileTable(lines)
+	writeFileLOG(LOGLINES)
 
 
 ##EXECUTE#############
-print "----MAIN----"
+LOGLINES.append("----DOAO TESTS EXECUTIONS----")
+print "----DOAO TESTS EXECUTIONS----"
 main()
 #iris = datasets.load_iris()
 #X, y = iris.data, iris.target
-#(X,y) = DATA['iris']
-#print "run in all datasets"
-#for key, value in DATA.iteritems():
-#	print key
+#console run with pipe: "python classifiers.py > doao-log.txt 2>&1"
 
