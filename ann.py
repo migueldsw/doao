@@ -6,6 +6,9 @@ from neurolab.train import train_gd
 
 class NeuralNetwork:
 
+    def __init__(self, nodes):
+        self.nodes = nodes
+
     def reshape(self, data):
         size = len(data)
         return data.reshape(size, 1)
@@ -18,7 +21,7 @@ class NeuralNetwork:
         """
 
         minmax = [[X.min(axis=0)[i], X.max(axis=0)[i]] for i in xrange(0, len(X[0]))]
-        size = [nodes, 1]
+        size = [self.nodes, 1]
         self.ann = newff(minmax, size)
 
         tar = self.reshape(y)
