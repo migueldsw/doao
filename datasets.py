@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from numpy import *
 from sklearn.datasets import fetch_mldata
 from sklearn import datasets
+from sklearn import preprocessing
 import urllib
 
 def class2int_iris(s):
@@ -115,12 +116,26 @@ def class2int_landcover(s):
         return 7
     else:
         return 8
+
     
 def  data_target(data):
     x = data[:,0:data[0,:].size - 1]
     y = data[:,data[0,:].size - 1]
     return (x,y)
 
+def normalize_columns(data):
+    rows, cols = data.shape
+    for col in range(0,cols):
+        minimo = data[:,col].min()
+        maximo = data[:,col].max()
+        
+        if(minimo != maximo):
+            denominador = maximo - minimo
+            normazu = (data[:,col] - minimo) / denominador
+            data[:,col] = (normazu*2) - 1;
+        else:
+            data[:,col] = 0
+     
 #URL's
 url_zoo = "http://archive.ics.uci.edu/ml/machine-learning-databases/zoo/zoo.data"
 url_wine = "http://archive.ics.uci.edu/ml/machine-learning-databases/wine/wine.data"
@@ -210,6 +225,21 @@ d_segment, t_segment = segment[:,1:20], segment[:,0]
 d_moviment, t_moviment = data_target(moviment)
 d_vehicle, t_vehicle = data_target(vehicle)
 d_landcover, t_landcover = landcover[:,1:148], landcover[:,0]
+
+normalize_columns(d_iris)
+normalize_columns(d_zoo)
+normalize_columns(d_wine)
+normalize_columns(d_seed)
+normalize_columns(d_yeast)
+normalize_columns(d_glass)
+normalize_columns(d_ecoli)
+normalize_columns(d_balance)
+normalize_columns(d_vowel)
+normalize_columns(d_segment)
+normalize_columns(d_moviment)
+normalize_columns(d_vehicle)
+normalize_columns(d_landcover)
+
 
 DATA = {
     'iris': (d_iris, t_iris),
