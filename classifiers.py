@@ -9,7 +9,7 @@ from sklearn.svm import SVC
 from sklearn.lda import LDA
 import neurolab as nl#
 from datasets import DATA
-CLASSIFIERSLISTNAME = ["LR", "KNN", "SVM", "DT", "LDA"]
+CLASSIFIERSLISTNAME = ["LR", "KNN", "SVM", "DT", "LDA", "ANN"]
 
 def evaluateKNN(trainData, trainTarget, testData, testTarget):
 	kList = [1,3,5,7,10,20,30]#1,3,5,7,10,20,30
@@ -238,13 +238,37 @@ def DOAO(X,Y):
 			error, classifier = KFoldValidation(nx,ny,classifierName)
 			classifierErrorList.append((classifier,error))
 			clfNameErrList.append((classifierName,error))
-		classifierSet.append(takeMin(classifierErrorList)) #TODO# change to append the best classifier
+		classifierSet.append(takeMin(classifierErrorList))
 		print ("DOAO <- " + takeMin(clfNameErrList) + " pair: (%d,%d)") %(p[0],p[1])
 		#if (bestError > error):
 		#	bestError = error
 		#	bestPair = p
 	#print "\nBEST ERROR: %f %% | for class %d vs %d" %(bestError,bestPair[0],bestPair[1])
 	return classifierSet
+
+
+def VOTE_Validation(X,Y):
+	pairs = OAOPairList(Y)
+	total_error = 0
+	for p in pairs:
+		classifierSet = []
+		#print "for classes: %d and %d:" %(p[0],p[1])
+		nx, ny = OAODataSet(X,Y,p)
+		for classifierName in CLASSIFIERSLISTNAME:
+			error, classifier = KFoldValidation(nx,ny,classifierName)
+			classifierSet.append(classifier)
+		nx,ny = random(nx,ny)
+		for i in range(10):
+			trd,trt,ted,tet= get10Fold_n(nx,ny,i)
+			for c in classifierSet:
+				c.fit(trd,trt)
+			for j in range(len(ted)):
+				votes = []
+				for c in classifierSet:
+					votes.append(c.predict(ted[j])[0])
+				if (apureVotes(votes) != tet[j]): 
+					total_error += 1
+	return (float(total_error)/len(Y))*100
 
 def takeMin(tupleList):
 	return min(tupleList, key = lambda t: t[1])[0]
@@ -304,8 +328,7 @@ def resultsCompDataset(datasetName,numExecutions):
 	#VOTE-OAO
 	errorTotal = 0
 	for i in range(numExecutions):
-		#oao = OAO(X[i],Y[i],clName)  
-		#errorTotal += VOTEOAOValidation(X,Y,oao)TODO
+		errorTotal += VOTE_Validation(X[i],Y[i])
 		errorTotal += 0
 	csvLineOut += "%.3f" %(float(errorTotal)/numExecutions) + sep
 	#DOAO(proposed)
@@ -328,10 +351,11 @@ print "----MAIN----"
 (X,y) = DATA['iris']
 #main(X,y)
 st = getTime()
-resultsCompDataset('iris',2)
+resultsCompDataset('iris',1)
 et = getTime()
 dt = float(et-st)/1000
 print "in %f seconds" %dt
 #print "run in all datasets"
 #for key, value in DATA.iteritems():
 #	print key
+
