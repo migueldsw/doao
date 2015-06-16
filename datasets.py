@@ -117,6 +117,23 @@ def class2int_landcover(s):
     else:
         return 8
 
+
+def class2int_car(s):
+    if (s == b'small') or (s == b'low') or (s == b'unacc'):
+        return 0
+    elif (s == b'med') or (s == b'acc'):
+        return 1
+    elif (s == b'high') or (s == b'big') or (s == b'good') or (s == b'2'):
+        return 2
+    elif (s == b'vhigh') or (s == b'vgood') or (s == b'3'):
+        return 3
+    elif s == b'more':
+        return 6
+    elif s == b'4':
+        return 4
+    else:
+        return 5
+
     
 def  data_target(data):
     x = data[:,0:data[0,:].size - 1]
@@ -135,29 +152,8 @@ def normalize_columns(data):
             data[:,col] = (normazu*2) - 1;
         else:
             data[:,col] = 0
-     
-#URL's
-url_zoo = "http://archive.ics.uci.edu/ml/machine-learning-databases/zoo/zoo.data"
-url_wine = "http://archive.ics.uci.edu/ml/machine-learning-databases/wine/wine.data"
-url_iris = "http://archive.ics.uci.edu/ml/machine-learning-databases/iris/iris.data"
-url_seed = "http://archive.ics.uci.edu/ml/machine-learning-databases/00236/seeds_dataset.txt"
-url_glass = "http://archive.ics.uci.edu/ml/machine-learning-databases/glass/glass.data"
-url_ecoli = "http://archive.ics.uci.edu/ml/machine-learning-databases/ecoli/ecoli.data"
-url_movement = "http://archive.ics.uci.edu/ml/machine-learning-databases/libras/movement_libras.data"
-url_balance = "http://archive.ics.uci.edu/ml/machine-learning-databases/balance-scale/balance-scale.data"
-url_annealing = "http://archive.ics.uci.edu/ml/machine-learning-databases/annealing/anneal.data"
 
-#raw_data = urllib.request.urlopen(url_seed)
 
-#dataset = np.loadtxt(raw_data, delimiter=",")
-#dataset = np.loadtxt('iris.data',delimiter= ',',converters={4: lambda s: class2int(s)},skiprows=1)
-
-# separate the data from the target attributes
-#X = dataset[:,0:4]
-#y = dataset[:,8]
-
-#iris = datasets.load_iris()
-#x, y = iris.data, iris.target
 
 ##  READ ZOO  ##
 zoo = np.genfromtxt('./Data/zoo.data', delimiter=',', usecols = range(1,18))
@@ -211,6 +207,23 @@ landcover2 = np.loadtxt('./Data/testing.csv', delimiter=',', converters={0: lamb
 
 landcover = np.concatenate((landcover1,landcover2))
 
+##  READ CAR EVALUATION  ##
+car0 = np.loadtxt('./Data/car.data', delimiter=',', usecols = [0], converters={0: lambda s: class2int_car(s)},skiprows=0)
+car1 = np.loadtxt('./Data/car.data', delimiter=',', usecols = [1], converters={1: lambda s: class2int_car(s)},skiprows=0)
+car2 = np.loadtxt('./Data/car.data', delimiter=',', usecols = [2], converters={2: lambda s: class2int_car(s)},skiprows=0)
+car3 = np.loadtxt('./Data/car.data', delimiter=',', usecols = [3], converters={3: lambda s: class2int_car(s)},skiprows=0)
+car4 = np.loadtxt('./Data/car.data', delimiter=',', usecols = [4], converters={4: lambda s: class2int_car(s)},skiprows=0)
+car5 = np.loadtxt('./Data/car.data', delimiter=',', usecols = [5], converters={5: lambda s: class2int_car(s)},skiprows=0)
+car6 = np.loadtxt('./Data/car.data', delimiter=',', usecols = [6], converters={6: lambda s: class2int_car(s)},skiprows=0)
+
+car = np.vstack([car0,car1])
+car = np.vstack([car,car2])
+car = np.vstack([car,car3])
+car = np.vstack([car,car4])
+car = np.vstack([car,car5])
+car = np.vstack([car,car6])
+car = np.transpose(car)
+
 ##  SEPARA EM DATA E TARGET  ##
 d_iris, t_iris = data_target(iris)
 d_zoo, t_zoo = data_target(zoo)
@@ -225,6 +238,7 @@ d_segment, t_segment = segment[:,1:20], segment[:,0]
 d_moviment, t_moviment = data_target(moviment)
 d_vehicle, t_vehicle = data_target(vehicle)
 d_landcover, t_landcover = landcover[:,1:148], landcover[:,0]
+d_car, t_car = data_target(car)
 
 normalize_columns(d_iris)
 normalize_columns(d_zoo)
@@ -239,7 +253,7 @@ normalize_columns(d_segment)
 normalize_columns(d_moviment)
 normalize_columns(d_vehicle)
 normalize_columns(d_landcover)
-
+normalize_columns(d_car)
 
 DATA = {
     'iris': (d_iris, t_iris),
@@ -255,4 +269,6 @@ DATA = {
     'moviment': (d_moviment, t_moviment),
     'vehicle': (d_vehicle, t_vehicle),
     'landcover': (d_landcover, t_landcover),
+    'car':  (d_car,t_car)
     }
+
