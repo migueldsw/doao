@@ -17,7 +17,7 @@ ITERATIONS = 1
 CLASSIFIERSLISTNAME = ["ANN", "DT","KNN","LDA","LR","SVM"]
 DATASETNAMESLIST = ["zoo","iris","wine","seed","glass","ecoli","moviment","balance","landcover","vehicle","iris","vowel","yeast","car","segment"]
 #CLASSIFIERSLISTNAME = ["KNN"] #just test
-#DATASETNAMESLIST = ["car"] #just test
+#DATASETNAMESLIST = ["ecoli","iris","car"] #just test
 LOGLINES = []
 
 def evaluateKNN(trainData, trainTarget, testData, testTarget):
@@ -154,6 +154,7 @@ def KFoldValidation(X,Y,classifierName):
 	total_error = 0.0
 	for i in range(10):
 		a,b,c,d = get10Fold_n(X,Y,i)
+		if (len(np.unique(b)) == 1) : b[0] = (np.unique(b)[0]+1)
 		if classifierName == "KNN":
 			error, bestk, bestClassifier = evaluateKNN(a,b,c,d )
 		elif classifierName == "DT":
@@ -237,6 +238,7 @@ def OAR(X,Y,classifierName):
 	return classifierSet
 
 def DOAO(X,Y):
+	if (len(np.unique(Y)) == 1) : Y[0] = (np.unique(Y)[0]+1)
 	pairs = OAOPairList(Y)
 	bestError = 100
 	bestPair = []
@@ -263,6 +265,7 @@ def DOAO(X,Y):
 
 
 def VOTE_Validation(X,Y):
+	if (len(np.unique(Y)) == 1) : Y[0] = (np.unique(Y)[0]+1)
 	pairs = OAOPairList(Y)
 	total_error = 0
 	for p in pairs:
@@ -290,6 +293,7 @@ def takeMin(tupleList):
 
 def Validation(X,Y,classifierSet):
 	##== OAO and OAR, by classifiers votes 
+	if (len(np.unique(Y)) == 1) : Y[0] = (np.unique(Y)[0]+1)
 	total_error = 0
 	for i in range(10):
 		trd,trt,ted,tet= get10Fold_n(X,Y,i)
@@ -369,13 +373,13 @@ def avgSelection(L,execs):
 		selections.append((it,c/execs))
 	return selections
 
-def writeFileTable(lines):
-	f = open('results.csv','w')
+def writeFileTable(datasetName,lines):
+	f = open(datasetName+'_results.csv','w')
 	for l in lines:
 		f.write(l)
 	f.close()
-def writeFileLOG(lines):
-	f = open('LOG-EXEC.txt','w')
+def writeFileLOG(datasetName,lines):
+	f = open(datasetName+'_LOG-EXEC.txt','w')
 	for l in lines:
 		f.write(l + "\n")
 	f.close()	
@@ -406,14 +410,14 @@ def main():
 		totalTime += dt
 		LOGLINES.append("in %f seconds" %dt)
 		print "in %f seconds" %dt
-	LOGLINES.append("-----------------")
-	LOGLINES.append( "Total Time Execution(s): %.2f" %totalTime)
-	print"-----------------"
-	print "Total Time Execution(s): %.2f" %totalTime
-	print "end"
-	LOGLINES.append("---END---")
-	writeFileTable(lines)
-	writeFileLOG(LOGLINES)
+		LOGLINES.append("-----------------")
+		LOGLINES.append( "Total Time Execution(s): %.2f" %totalTime)
+		print"-----------------"
+		print "Total Time Execution(s): %.2f" %totalTime
+		print "end"
+		LOGLINES.append("---END---")
+		writeFileTable(key,lines)
+		writeFileLOG(key,LOGLINES)
 
 
 ##EXECUTE#############
