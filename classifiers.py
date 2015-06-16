@@ -1,6 +1,6 @@
 import numpy as np
 import time
-from sklearn import datasets
+from sklearn import datasets, linear_model
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
 from collections import Counter as ctr
@@ -9,8 +9,15 @@ from sklearn.svm import SVC
 from sklearn.lda import LDA
 import neurolab as nl#
 from datasets import DATA
+from sklearn.neural_network import BernoulliRBM
+from sklearn.pipeline import Pipeline
 
-CLASSIFIERSLISTNAME = ["LR", "KNN", "SVM", "DT", "LDA", "ANN"]
+
+ITERATIONS = 1
+CLASSIFIERSLISTNAME = ["ANN", "DT","KNN","LDA","LR","SVM"]
+DATASETNAMESLIST = ["zoo","iris","wine","seed","glass","ecoli","moviment","balance","landcover","vehicle","iris","vowel","yeast","car","segment"]
+#CLASSIFIERSLISTNAME = ["KNN"] #just test
+#DATASETNAMESLIST = ["car"] #just test
 LOGLINES = []
 
 def evaluateKNN(trainData, trainTarget, testData, testTarget):
@@ -33,22 +40,25 @@ def evaluateKNN(trainData, trainTarget, testData, testTarget):
 	return error, best_k, bestClassifier
 
 def evaluateANN(trainData, trainTarget, testData, testTarget):
-	return 100.00, LogisticRegression() #JUST TEST # TODO: REMOVE
-	hiddenList=range(3,21)#no. hidden nodes
+	#return evaluateLR(trainData[:len(trainData)], trainTarget[:len(trainData)], testData, testTarget)
+	hiddenList=range(3,21)#no. hidden nodes 3~20  (3,21)
+	#max iterations = 300
 	error = 1000000.0
 	bestClassifier = []
 	for h in hiddenList:
-		ann = ANN(hiddenLayerNodes = h, maxIterations = 300, backPropagation = True) #TODO#
-		ann.FIT(trainData,trainTarget) #TODO#
+		logistic = linear_model.LogisticRegression(C = 6000.0) #classifier to pipe
+		rbm = BernoulliRBM(n_components=h,random_state=0,n_iter=30,learning_rate=0.05) #ann
+		ann = Pipeline(steps=[('rbm', rbm), ('logistic', logistic)])
+		ann.fit(trainData,trainTarget)
 		error_temp = 0.0
 		for i in range(len(testData)):
-			prediction = ann.PREDICT(testData[i]) #class prediction# TODO #
+			prediction = ann.predict(testData[i])[0]
+			#print prediction
 			if (prediction != testTarget[i]): error_temp += 1.0
 		if(error_temp < error):
 			error = error_temp
 			bestClassifier = ann
 	return error, bestClassifier
-	return 100.00, LogisticRegression() #JUST TEST # TODO: REMOVE
 
 def evaluateDT(trainData, trainTarget, testData, testTarget):
 	mLeafList = [1,2,3,5] # Min. datapoints  in a LEAF node
@@ -311,7 +321,7 @@ def resultsCompDataset(datasetName,numExecutions):
 		x,y = random(data,target)
 		X.append(x)
 		Y.append(y)
-	for clName in ["ANN", "DT","KNN","LDA","LR","SVM"]:
+	for clName in CLASSIFIERSLISTNAME:
 		#OAR
 		errorTotal = 0
 		for i in range(numExecutions):
@@ -320,7 +330,7 @@ def resultsCompDataset(datasetName,numExecutions):
 			errorTotal += er 
 			#print "ERRO: %f" %er
 		csvLineOut += "%.3f" %(float(errorTotal)/numExecutions) + sep
-	for clName in ["ANN", "DT","KNN","LDA","LR","SVM"]:
+	for clName in CLASSIFIERSLISTNAME:
 		#OAO
 		errorTotal = 0
 		for i in range(numExecutions):
@@ -378,12 +388,12 @@ def printTupleList(list):
 
 def main():
 	lines = []
-	iterations = 10
+	iterations = ITERATIONS
 	totalTime = 0.0
 	LOGLINES.append("itarations: %d"  %iterations)
 	print "itarations: %d"  %iterations
 	#for key, value in DATA.iteritems():
-	for key in ["zoo","iris","wine","seed","glass","ecoli","moviment","balance","landcover","vehicle","zoo","vowel","yeast","zoo","segment"]:
+	for key in DATASETNAMESLIST:
 		LOGLINES.append("-----------------")
 		LOGLINES.append("Data set: " + key)
 		print"-----------------"
@@ -412,5 +422,8 @@ print "----DOAO TESTS EXECUTIONS----"
 main()
 #iris = datasets.load_iris()
 #X, y = iris.data, iris.target
+#(X,y) = DATA["zoo"]
+#X, y = random(X,y)
+#e, c = evaluateKNN(X,y,X[:8],y[:8])
 #console run with pipe: "python classifiers.py > doao-log.txt 2>&1"
 
